@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript"
+            src="http://maps.googleapis.com/maps/api/js?key=AIzaSyByBBhmXlmIWf91SifMW7gSVUtj8Y9cHaI&sensor=false"></script>
+
+    <script type="text/javascript">
+        var convexMessage = "The polygon is convex.";
+        var concaveMessage = "The polygon is concave.";
+
+        function showPositon(x, y) {
+            var mapOptions = {
+                center: new google.maps.LatLng(x, y),
+                zoom: 9,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+
+            var polygonPath = [];
+            var shape = new google.maps.Polygon({
+                paths: polygonPath,
+                strokeColor: '#00FF00',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '#00FF00',
+                fillOpacity: 0.35
+            });
+
+            var map = new google.maps.Map(document.getElementById("map"),
+                mapOptions);
+
+            shape.setMap(map);
+
+            map.addListener('click', function (event) {
+                polygonPath.push(event.latLng);
+                shape.setPath(polygonPath);
+                shape.setMap(map);
+                setTimeout(function () { isConvex(polygonPath, polygonPath.length); }, 400);
+            });
+
+            return map;
+        }
+
+        function isConvex(polygonPath, vectorNumber) {
+            var v1, v2, det, next_det;
+
+            if (vectorNumber < 3) {
+                return (false);
+            }
+
+            v1 = calculateVector(polygonPath[0], polygonPath[vectorNumber - 1]);
+            v2 = calculateVector(polygonPath[1], polygonPath[0]);
+            det = calculateDeterminant(v1, v2);
+
+            for (var i = 1; i < vectorNumber - 1; i++) {
+                v1 = v2;
+                v2 = calculateVector(polygonPath[i + 1], polygonPath[i]);
+                next_det = calculateDeterminant(v1, v2);
+
+                if (det * next_det < 0.0) {
+                    alert(concaveMessage);
+                    break;
+                }
+            }
+
+            if (det * next_det > 0.0) {
+                alert(convexMessage);
+            }
+        }
+
+        // Utility functions
+
+        function calculateVector(v1, v2) {
+            return new google.maps.LatLng(
+                v1.lat() - v2.lat(),
+                v1.lng() - v2.lng()
+            );
+        }
+
+        function calculateDeterminant(v1,v2) {
+            return v1.lat() * v2.lng()
+                 - v1.lng() * v2.lat();
+        }
+    </script>
+
+</head>
+<body onload="showPositon(59.940224, 30.308533)">
+    <div id="map" style="width:1500px; height:700px; padding:0px; margin:0px"></div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type="text/javascript"
+            src="http://maps.googleapis.com/maps/api/js?key=AIzaSyByBBhmXlmIWf91SifMW7gSVUtj8Y9cHaI&sensor=false"></script>
+
+    <script type="text/javascript">
+        var convexMessage = "The polygon is convex.";
+        var concaveMessage = "The polygon is concave.";
+
+        var polygonPath = [];
+        var vectorNumber = 0;
+
+        var map;
+        var mapOptions;
+        var shape;
+
+        var triangulationPaths = [];
+
+        function showPositon(x, y) {
+            mapOptions = {
+                center: new google.maps.LatLng(x, y),
+                zoom: 9,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+
+            shape = new google.maps.Polygon({
+                paths: polygonPath,
+                strokeColor: '#00FF00',
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: '#00FF00',
+                fillOpacity: 0.35
+            });
+
+            map = new google.maps.Map(document.getElementById("map"),
+                mapOptions);
+
+            shape.setMap(map);
+
+            map.addListener('click', function (event) {
+                polygonPath.push(event.latLng);
+                shape.setPath(polygonPath);
+                shape.setMap(map);
+                vectorNumber = polygonPath.length;
+                setTimeout(function () { isConvex(polygonPath, polygonPath.length); }, 400);
+            });
+            
+            return map;
+        }
+
+        function isConvex(polygonPath, vectorNumber) {
+            var v1, v2, det, next_det;
+
+            if (vectorNumber < 3) {
+                return (true);
+            }
+
+            v1 = calculateVector(polygonPath[0], polygonPath[vectorNumber - 1]);
+            v2 = calculateVector(polygonPath[1], polygonPath[0]);
+            det = calculateDeterminant(v1, v2);
+
+            for (var i = 1; i < vectorNumber - 1; i++) {
+                v1 = v2;
+                v2 = calculateVector(polygonPath[i + 1], polygonPath[i]);
+                next_det = calculateDeterminant(v1, v2);
+
+                if (det * next_det < 0.0) {
+                    //alert(concaveMessage);
+                    return (false);
+                    break;
+                }
+            }
+
+            if (det * next_det > 0.0) {
+                //alert(convexMessage);
+                return (true);
+            }
+        }
+
+        function findGreatestAngle() {
+            if (!isConvex(polygonPath, vectorNumber)) {
+                alert(concaveMessage);
+                return (false);
+            }
+
+            var angleSum = 0.0;
+            var angles = [];
+            var anglesIndex = [];
+
+            var angle = findAngle(polygonPath[vectorNumber - 1], polygonPath[0], polygonPath[1]);
+            angleSum += angle;
+            angles.push(angle);
+            anglesIndex.push(0);
+
+            for (var i = 1; i < vectorNumber - 1; i++) {
+                angle = findAngle(polygonPath[i - 1], polygonPath[i], polygonPath[i + 1]);
+                angleSum += angle;
+                angles.push(angle);
+                anglesIndex.push(i);
+            }
+
+            angle = findAngle(polygonPath[0], polygonPath[vectorNumber - 1], polygonPath[vectorNumber - 2]);
+            angleSum += angle;
+            angles.push(angle);
+            anglesIndex.push(vectorNumber - 1);
+
+            var maxAngle = angles.indexOf(Math.max(...angles));
+
+            //alert(maxAngle);
+            return (maxAngle);
+        }
+
+        function triangulate() {
+            var vertexIndex = findGreatestAngle();
+
+            for (var i = 0; i < polygonPath.length - 1; i++) {
+                if (i != vertexIndex + 1 || i != vertexIndex - 1) {
+                    var line = new google.maps.Polyline({
+                        path: [polygonPath[vertexIndex], polygonPath[i]],
+                        strokeColor: '#00FF00',
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2
+                    });
+
+                    triangulationPaths.push(line);
+                }
+            }
+
+            for (i = 0; i < triangulationPaths.length; i++) {
+                triangulationPaths[i].setMap(map);
+            }
+        }
+
+        // Utility functions
+
+        function calculateVector(v1, v2) {
+            return new google.maps.LatLng(
+                v1.lat() - v2.lat(),
+                v1.lng() - v2.lng()
+            );
+        }
+
+        function calculateDeterminant(v1, v2) {
+            return v1.lat() * v2.lng()
+                - v1.lng() * v2.lat();
+        }
+
+        function findAngle(c1, c2, c3) {
+            var AB = Math.sqrt((c2.lat() - c1.lat()) ** 2 + (c2.lng() - c1.lng()) ** 2);
+            var BC = Math.sqrt((c2.lat() - c3.lat()) ** 2 + (c2.lng() - c3.lng()) ** 2);
+            var AC = Math.sqrt((c3.lat() - c1.lat()) ** 2 + (c3.lng() - c1.lng()) ** 2);
+
+            return (Math.acos((BC * BC + AB * AB - AC * AC) / (2 * BC * AB)) * (180 / Math.PI));
+        }
+    </script>
+
+</head>
+<body onload="showPositon(59.940224, 30.308533)">
+    <div id="map" style="width:1500px; height:700px; padding:0px; margin:0px"></div>
+    <br /><br /> <button onclick="triangulate();">Triangulate</button>
+    <!--drawLine(polygonPath, vectorNumber);-->
+</body>
+</html>
